@@ -102,4 +102,5 @@ dependencies {
 
     // Mapbox Navigation SDK
     implementation "com.mapbox.navigation:android:2.0.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.1"
 }

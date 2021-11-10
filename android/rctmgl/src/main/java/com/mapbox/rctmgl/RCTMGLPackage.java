@@ -31,6 +31,7 @@ import com.mapbox.rctmgl.components.styles.sources.RCTMGLImageSourceManager;
 import com.mapbox.rctmgl.components.styles.sources.RCTMGLRasterSourceManager;
 import com.mapbox.rctmgl.components.styles.sources.RCTMGLShapeSourceManager;
 import com.mapbox.rctmgl.components.styles.sources.RCTMGLVectorSourceManager;
+import com.mapbox.rctmgl.hypervisor.ManeuverInstructionsViewManager;
 import com.mapbox.rctmgl.hypervisor.MapboxNavigationModule;
 import com.mapbox.rctmgl.modules.RCTMGLLocationModule;
 import com.mapbox.rctmgl.modules.RCTMGLLogging;
@@ -96,6 +97,9 @@ public class RCTMGLPackage implements ReactPackage {
         managers.add(new RCTMGLRasterLayerManager());
         managers.add(new RCTMGLBackgroundLayerManager());
 
+        // mapbox navigation
+        managers.add(new ManeuverInstructionsViewManager());
+        
         return managers;
     }
 }
