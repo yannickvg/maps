@@ -31,7 +31,6 @@ import com.mapbox.rctmgl.components.styles.sources.RCTMGLImageSourceManager;
 import com.mapbox.rctmgl.components.styles.sources.RCTMGLRasterSourceManager;
 import com.mapbox.rctmgl.components.styles.sources.RCTMGLShapeSourceManager;
 import com.mapbox.rctmgl.components.styles.sources.RCTMGLVectorSourceManager;
-import com.mapbox.rctmgl.hypervisor.ManeuverInstructionsViewManager;
 import com.mapbox.rctmgl.hypervisor.MapboxNavigationModule;
 import com.mapbox.rctmgl.modules.RCTMGLLocationModule;
 import com.mapbox.rctmgl.modules.RCTMGLLogging;
@@ -44,6 +43,8 @@ import com.mapbox.rctmgl.modules.RCTMGLSnapshotModule;
  */
 
 public class RCTMGLPackage implements ReactPackage {
+
+    public static RCTMGLAndroidTextureMapViewManager mapViewManager;
 
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactApplicationContext) {
@@ -68,11 +69,13 @@ public class RCTMGLPackage implements ReactPackage {
     public List<ViewManager> createViewManagers(ReactApplicationContext reactApplicationContext) {
         List<ViewManager> managers = new ArrayList<>();
 
+        mapViewManager =  new RCTMGLAndroidTextureMapViewManager(reactApplicationContext);
+
         // components
         managers.add(new RCTMGLCameraManager(reactApplicationContext));
         managers.add(new RCTMGLMapViewManager(reactApplicationContext));
         managers.add(new RCTMGLMarkerViewManager(reactApplicationContext));
-        managers.add(new RCTMGLAndroidTextureMapViewManager(reactApplicationContext));
+        managers.add(mapViewManager);
         managers.add(new RCTMGLLightManager());
         managers.add(new RCTMGLPointAnnotationManager(reactApplicationContext));
         managers.add(new RCTMGLCalloutManager());
@@ -98,7 +101,6 @@ public class RCTMGLPackage implements ReactPackage {
         managers.add(new RCTMGLBackgroundLayerManager());
 
         // mapbox navigation
-        managers.add(new ManeuverInstructionsViewManager());
         
         return managers;
     }

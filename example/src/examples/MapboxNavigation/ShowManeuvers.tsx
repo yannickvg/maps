@@ -22,9 +22,32 @@ const ShowManeuvers: FC<any> = props => {
          );
   }, []);
 
+  const _mapOptions = Object.keys(MapboxGL.StyleURL)
+      .map(key => {
+        return {
+          label: key,
+          data: (MapboxGL.StyleURL as any)[key], // bad any, because enums
+        };
+      })
+      .sort(onSortOptions);
+
+    const [styleURL, setStyleURL] = useState({styleURL: _mapOptions[0].data});
+
+    const onMapChange = (index: number, newStyleURL: MapboxGL.StyleURL): void => {
+      setStyleURL({styleURL: newStyleURL});
+    };
+
+    const onUserMarkerPress = (): void => {
+      Alert.alert('You pressed on the user location annotation');
+    };
+
   return (
      <View style={styles.container}>
-      <ManeuverInstructionsView style={styles.box} />
+        <MapboxGL.MapView styleURL={styleURL.styleURL} style={sheet.matchParent}>
+            <MapboxGL.Camera followZoomLevel={12} followUserLocation />
+
+            <MapboxGL.UserLocation onPress={onUserMarkerPress} />
+          </MapboxGL.MapView>
      </View>
   );
 };
@@ -41,8 +64,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5FCFF'
   },
   container: {
-    height: 600,
-    width: 300,
+    height: 800,
+    width: 400,
     backgroundColor: 'tomato'
   },
   map: {

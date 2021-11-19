@@ -73,6 +73,14 @@ public class RCTMGLMapViewManager extends AbstractEventEmitter<RCTMGLMapView> {
         }
     }
 
+    public RCTMGLMapView getFirstMapView() {
+        if (!mViews.values().isEmpty()) {
+            return (RCTMGLMapView) mViews.values().toArray()[0];
+        } else {
+            return null;
+        }
+    }
+
     @Override
     public void addView(RCTMGLMapView mapView, View childView, int childPosition) {
         mapView.addFeature(childView, childPosition);

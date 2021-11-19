@@ -2,24 +2,27 @@ package com.mapbox.rctmgl.hypervisor
 
 import android.annotation.SuppressLint
 import android.util.Log
+import androidx.lifecycle.LifecycleOwner
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.google.gson.GsonBuilder
+import com.mapbox.api.directions.v5.models.BannerInstructions
 import com.mapbox.api.directions.v5.models.DirectionsRoute
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.geojson.Point
-import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
-import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
-import com.mapbox.navigation.base.options.NavigationOptions
-import com.mapbox.navigation.base.route.RouterCallback
-import com.mapbox.navigation.base.route.RouterFailure
-import com.mapbox.navigation.base.route.RouterOrigin
+import com.mapbox.navigation.base.trip.model.RouteProgress
 import com.mapbox.navigation.core.MapboxNavigation
 import com.mapbox.navigation.core.MapboxNavigationProvider
-import com.mapbox.navigation.core.formatter.MapboxDistanceFormatter
+import com.mapbox.navigation.core.directions.session.RoutesRequestCallback
+import com.mapbox.navigation.core.trip.session.BannerInstructionsObserver
 import com.mapbox.navigation.core.trip.session.RouteProgressObserver
-import com.mapbox.navigation.ui.maneuver.api.MapboxManeuverApi
+import com.mapbox.rctmgl.components.mapview.RCTMGLMapView
+
 import com.facebook.react.module.annotations.ReactModule
+import com.mapbox.navigation.base.internal.extensions.applyDefaultParams
+import com.mapbox.navigation.ui.route.NavigationMapRoute
+import com.mapbox.rctmgl.RCTMGLPackage
+import com.mapbox.rctmgl.components.mapview.RCTMGLMapViewManager
 
 @ReactModule(name = "MapboxNavigation")
 class MapboxNavigationModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext)  {
@@ -31,6 +34,8 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
     private var route: DirectionsRoute? = null
 
     private lateinit var mapboxNavigation: MapboxNavigation
+
+    private var navigationMapRoute: NavigationMapRoute? = null
 
     override fun getName(): String {
         return "MapboxNavigation"
@@ -52,53 +57,75 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
 
     @ReactMethod
     fun setRoute(route: String, promise: Promise) {
-        this.route = gson.fromJson(route, DirectionsRoute::class.java)
-        this.route?.let {
-            mapboxNavigation.setRoutes(listOf(it))
-        }
+        handleRoute(gson.fromJson(route, DirectionsRoute::class.java))
         promise.resolve(true)
     }
 
-    private val distanceFormatter: DistanceFormatterOptions by lazy {
-        DistanceFormatterOptions.Builder(safeContext).build()
-    }
-
-    private val maneuverApi: MapboxManeuverApi by lazy {
-        MapboxManeuverApi(MapboxDistanceFormatter(distanceFormatter))
-    }
-
-    private val routeProgressObserver =
-        RouteProgressObserver { routeProgress ->
-            val maneuvers = maneuverApi.getManeuvers(routeProgress)
-            if (maneuvers.isValue) {
-                sendEvent(reactContext, "onManeuversUpdated", maneuvers.value?.toJsonParam(gson))
+    private fun handleRoute(route: DirectionsRoute) {
+        this.route = route
+        this.route?.let {
+            mapboxNavigation.setRoutes(listOf(it))
+            val mapViewManager:RCTMGLMapViewManager = RCTMGLPackage.mapViewManager
+            if (mapViewManager.firstMapView != null) {
+                if (navigationMapRoute == null) {
+                    navigationMapRoute = NavigationMapRoute.Builder(mapViewManager.firstMapView, mapViewManager.firstMapView.mapboxMap, currentActivity as LifecycleOwner).withMapboxNavigation(mapboxNavigation)
+                        .withVanishRouteLineEnabled(false)
+                        .build()
+                }
+                navigationMapRoute!!.addRoute(this.route)
             }
         }
+    }
+
+    private val routeProgressObserver = object : RouteProgressObserver {
+        override fun onRouteProgressChanged(routeProgress: RouteProgress) {
+
+        }
+    }
+
+    private val bannerInstructionsObserver = object: BannerInstructionsObserver {
+        override fun onNewBannerInstructions(bannerInstructions: BannerInstructions) {
+            logInfo("new banner instructions");
+            logInfo("primary: ${bannerInstructions.primary()}")
+            logInfo("secondary: ${bannerInstructions.secondary()}")
+            logInfo("sub: ${bannerInstructions.sub()}")
+            logInfo("distance: ${bannerInstructions.distanceAlongGeometry()}")
+        }
+    }
 
     @SuppressLint("MissingPermission")
     private fun initMapBox() {
         config?.accessToken?.let {
-            val navigationOptions = NavigationOptions.Builder(safeContext)
-                .accessToken(it)
+            val navigationOptions = MapboxNavigation
+                .defaultNavigationOptionsBuilder(safeContext, it)
                 .build()
             mapboxNavigation = MapboxNavigationProvider.create(navigationOptions)
             val listener: LifecycleEventListener = object : LifecycleEventListener {
                 override fun onHostResume() {
                     logDebug("onResume")
-                    mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
-                    mapboxNavigation.startTripSession()
+                    if (MapboxNavigationProvider.isCreated()) {
+                        MapboxNavigationProvider.retrieve().registerRouteProgressObserver(routeProgressObserver)
+                        MapboxNavigationProvider.retrieve().registerBannerInstructionsObserver(bannerInstructionsObserver)
+                        mapboxNavigation.startTripSession()
+                    }
                 }
 
                 override fun onHostPause() {
                     logDebug("onPause")
-                    mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
-                    mapboxNavigation.stopTripSession()
+                    if (MapboxNavigationProvider.isCreated()) {
+                        MapboxNavigationProvider.retrieve().unregisterRouteProgressObserver(routeProgressObserver)
+                        MapboxNavigationProvider.retrieve().unregisterBannerInstructionsObserver(bannerInstructionsObserver)
+                        mapboxNavigation.stopTripSession()
+                    }
                 }
 
                 override fun onHostDestroy() {
                     logDebug("onDestroy")
-                    mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
-                    mapboxNavigation.stopTripSession()
+                    if (MapboxNavigationProvider.isCreated()) {
+                        MapboxNavigationProvider.retrieve().unregisterRouteProgressObserver(routeProgressObserver)
+                        MapboxNavigationProvider.retrieve().unregisterBannerInstructionsObserver(bannerInstructionsObserver)
+                        mapboxNavigation.stopTripSession()
+                    }
                 }
             }
             reactContext.addLifecycleEventListener(listener)
@@ -106,25 +133,20 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
             //TODO this is temporary, remove when we have routes
             if (route == null) {
                 mapboxNavigation.requestRoutes(
-                    RouteOptions.builder().applyDefaultNavigationOptions().coordinatesList(listOf(
-                        Point.fromLngLat(4.375606188596978, 51.14121566158028), Point.fromLngLat(4.441955998895892, 51.14179615098452))).build(),
-                    object : RouterCallback {
-                        override fun onRoutesReady(
-                            routes: List<DirectionsRoute>,
-                            routerOrigin: RouterOrigin
-                        ) {
-                            mapboxNavigation.setRoutes(routes)
+                    RouteOptions.builder().applyDefaultParams().accessToken(it)
+                        .coordinates(listOf(
+                            Point.fromLngLat(4.375606188596978, 51.14121566158028),
+                            Point.fromLngLat(4.441955998895892, 51.14179615098452))).build(),
+                    object : RoutesRequestCallback {
+                        override fun onRoutesReady(routes: List<DirectionsRoute>) {
+                            handleRoute(routes[0])
                         }
 
-                        override fun onCanceled(routeOptions: RouteOptions, routerOrigin: RouterOrigin) {
-                        }
-
-                        override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {
-                        }
+                        override fun onRoutesRequestFailure(throwable: Throwable, routeOptions: RouteOptions) {}
+                        override fun onRoutesRequestCanceled(routeOptions: RouteOptions) {}
                     }
                 )
             }
-
         }
     }
 
