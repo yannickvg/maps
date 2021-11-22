@@ -44,7 +44,7 @@ const ShowManeuvers: FC<any> = props => {
   return (
      <View style={styles.container}>
         <MapboxGL.MapView styleURL={styleURL.styleURL} style={sheet.matchParent}>
-            <MapboxGL.Camera followZoomLevel={12} followUserLocation />
+            <MapboxGL.Camera followZoomLevel={12} followUserLocation={true} />
 
             <MapboxGL.UserLocation onPress={onUserMarkerPress} />
           </MapboxGL.MapView>

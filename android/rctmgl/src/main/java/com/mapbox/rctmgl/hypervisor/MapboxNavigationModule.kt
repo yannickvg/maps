@@ -21,8 +21,16 @@ import com.mapbox.rctmgl.components.mapview.RCTMGLMapView
 import com.facebook.react.module.annotations.ReactModule
 import com.mapbox.navigation.base.internal.extensions.applyDefaultParams
 import com.mapbox.navigation.ui.route.NavigationMapRoute
+import com.mapbox.rctmgl.R
 import com.mapbox.rctmgl.RCTMGLPackage
 import com.mapbox.rctmgl.components.mapview.RCTMGLMapViewManager
+import com.mapbox.rctmgl.hypervisor.models.BannerInstructionsResponse
+import com.mapbox.rctmgl.hypervisor.models.RouteProgressResponse
+
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
+import com.mapbox.navigation.ui.camera.NavigationCamera
+import com.mapbox.navigation.ui.camera.NavigationCamera.NAVIGATION_TRACKING_MODE_GPS
+
 
 @ReactModule(name = "MapboxNavigation")
 class MapboxNavigationModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext)  {
@@ -69,9 +77,13 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
             if (mapViewManager.firstMapView != null) {
                 if (navigationMapRoute == null) {
                     navigationMapRoute = NavigationMapRoute.Builder(mapViewManager.firstMapView, mapViewManager.firstMapView.mapboxMap, currentActivity as LifecycleOwner).withMapboxNavigation(mapboxNavigation)
-                        .withVanishRouteLineEnabled(false)
+                        .withStyle(R.style.MapboxCustomNavigationRouteStyle)
+                        .withVanishRouteLineEnabled(true)
                         .build()
                 }
+                mapViewManager.firstMapView.mapboxMap.moveCamera(CameraUpdateFactory.zoomTo(15.0))
+                val navigationCamera = NavigationCamera(mapViewManager.firstMapView.mapboxMap)
+                navigationCamera.resetCameraPositionWith(NAVIGATION_TRACKING_MODE_GPS)
                 navigationMapRoute!!.addRoute(this.route)
             }
         }
@@ -79,17 +91,13 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
 
     private val routeProgressObserver = object : RouteProgressObserver {
         override fun onRouteProgressChanged(routeProgress: RouteProgress) {
-
+            sendEvent(reactContext, "onRouteProgressChanged", gson.toJson(RouteProgressResponse(routeProgress = routeProgress)))
         }
     }
 
     private val bannerInstructionsObserver = object: BannerInstructionsObserver {
         override fun onNewBannerInstructions(bannerInstructions: BannerInstructions) {
-            logInfo("new banner instructions");
-            logInfo("primary: ${bannerInstructions.primary()}")
-            logInfo("secondary: ${bannerInstructions.secondary()}")
-            logInfo("sub: ${bannerInstructions.sub()}")
-            logInfo("distance: ${bannerInstructions.distanceAlongGeometry()}")
+            sendEvent(reactContext, "onNewBannerInstructions", gson.toJson(BannerInstructionsResponse(bannerInstructions = bannerInstructions)))
         }
     }
 
@@ -155,10 +163,10 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
         super.onCatalystInstanceDestroy()
     }
 
-    private fun sendEvent(reactContext: ReactContext, eventName: String, params: WritableMap?) {
+    private fun sendEvent(reactContext: ReactContext, eventName: String, response: String) {
         reactContext
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-            .emit(eventName, params)
+            .emit(eventName, response)
     }
 
     private fun hasBeenInitialised(promise: Promise): Boolean {
