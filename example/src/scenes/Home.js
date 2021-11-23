@@ -70,6 +70,9 @@ import SetUserLocationRenderMode from '../examples/UserLocation/SetUserLocationR
 import SetUserLocationVerticalAlignment from '../examples/UserLocation/SetUserLocationVerticalAlignment';
 import UserLocationChange from '../examples/UserLocation/UserLocationChange';
 
+// MAPBOX NAVIGATION
+import ShowManeuvers from '../examples/MapboxNavigation/ShowManeuvers';
+
 // MISC
 import BugReportTemplate from '../examples/BugReportExample';
 import CacheManagement from '../examples/CacheManagement';
@@ -120,6 +123,9 @@ const BugReportPage = ({...props}) => (
 
 const Examples = [
   new ExampleItem('Bug Report Template', BugReportPage),
+  new ExampleGroup('Mapbox Navigation', [
+    new ExampleItem('ShowManeuvers', ShowManeuvers),
+  ]),
   new ExampleGroup('Map', [
     new ExampleItem('Show Map', ShowMap),
     new ExampleItem('Show Map With Local Style.JSON', ShowMapLocalStyle),
