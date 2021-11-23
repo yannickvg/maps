@@ -88,16 +88,18 @@ Pod::Spec.new do |s|
   s.homepage    	= "https://github.com/@react-native-mapbox-gl/maps#readme"
   s.source      	= { :git => "https://github.com/@react-native-mapbox-gl/maps.git" }
   s.license     	= "MIT"
-  s.platform    	= :ios, "8.0"
+  s.platform    	= :ios, "10.0"
 
   if !$RNMBGL_Use_SPM
-  s.dependency 'Mapbox-iOS-SDK', rnmbgl_ios_version
+  s.dependency 'Mapbox-iOS-SDK', '~> 6.0.0' # rnmbgl_ios_version
   end
   s.dependency 'React-Core'
   s.dependency 'React'
-
+  s.dependency "MapboxCoreNavigation", "~> 1.4.1"
+  s.dependency "MapboxNavigation", "~> 1.4.1"
+  
   s.subspec 'DynamicLibrary' do |sp|
-    sp.source_files	= "ios/RCTMGL/**/*.{h,m}"
+    sp.source_files	= "ios/RCTMGL/**/*.{h,m,swift}"
   end
 
   if ENV["REACT_NATIVE_MAPBOX_GL_USE_FRAMEWORKS"]
