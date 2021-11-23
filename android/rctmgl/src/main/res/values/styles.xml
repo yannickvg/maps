@@ -3,5 +3,7 @@
         <item name="routeColor">#058A0A</item>
         <item name="routeLowCongestionColor">#058A0A</item>
         <item name="routeUnknownCongestionColor">#058A0A</item>
+        <item name="upcomingManeuverArrowColor">@android:color/holo_red_light</item>
+        <item name="upcomingManeuverArrowBorderColor">@android:color/holo_blue_bright</item>
     </style>
 </resources>

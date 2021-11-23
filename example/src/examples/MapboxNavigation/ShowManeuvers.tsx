@@ -15,11 +15,17 @@ const ManeuverInstructionsView = requireNativeComponent(
 const ShowManeuvers: FC<any> = props => {
   useEffect(() => {
      MapboxGL.setAccessToken('pk.eyJ1Ijoic2VudGFzIiwiYSI6ImNramg0dmxhazk3eWEzMXFqbHY0cGc3ZWkifQ.B6kmxSEPA6W_lida1p6MWQ');
-      NativeModules.MapboxNavigation.init(
+     NativeModules.MapboxNavigation.init(
            'pk.eyJ1Ijoic2VudGFzIiwiYSI6ImNramg0dmxhazk3eWEzMXFqbHY0cGc3ZWkifQ.B6kmxSEPA6W_lida1p6MWQ',
            'nl_BE',
            true
          );
+     setTimeout(function () {
+        NativeModules.MapboxNavigation.startDummyRoute(true)
+         setTimeout(function () {
+                   NativeModules.MapboxNavigation.stopRoute()
+                 }, 10000);
+      }, 2000);
   }, []);
 
   const _mapOptions = Object.keys(MapboxGL.StyleURL)
@@ -45,8 +51,6 @@ const ShowManeuvers: FC<any> = props => {
      <View style={styles.container}>
         <MapboxGL.MapView styleURL={styleURL.styleURL} style={sheet.matchParent}>
             <MapboxGL.Camera followZoomLevel={12} followUserLocation={true} />
-
-            <MapboxGL.UserLocation onPress={onUserMarkerPress} />
           </MapboxGL.MapView>
      </View>
   );

@@ -45,6 +45,8 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
 
     private var navigationMapRoute: NavigationMapRoute? = null
 
+    private var enableBannerInstructions: Boolean = false
+
     override fun getName(): String {
         return "MapboxNavigation"
     }
@@ -64,15 +66,51 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
     }
 
     @ReactMethod
-    fun setRoute(route: String, promise: Promise) {
+    fun startRoute(route: String, enableBannerInstructions: Boolean, promise: Promise) {
+        this.enableBannerInstructions = enableBannerInstructions
         handleRoute(gson.fromJson(route, DirectionsRoute::class.java))
+        promise.resolve(true)
+    }
+
+    //TODO this is temporary, remove when we have routes
+    @ReactMethod
+    fun startDummyRoute(enableBannerInstructions: Boolean, promise: Promise) {
+        this.enableBannerInstructions = enableBannerInstructions
+        config?.accessToken?.let {
+            mapboxNavigation.requestRoutes(
+                RouteOptions.builder().applyDefaultParams().accessToken(it)
+                    .coordinates(listOf(
+                        Point.fromLngLat(4.375606188596978, 51.14121566158028),
+                        Point.fromLngLat(4.441955998895892, 51.14179615098452))).build(),
+                object : RoutesRequestCallback {
+                    override fun onRoutesReady(routes: List<DirectionsRoute>) {
+                        handleRoute(routes[0])
+                    }
+
+                    override fun onRoutesRequestFailure(throwable: Throwable, routeOptions: RouteOptions) {}
+                    override fun onRoutesRequestCanceled(routeOptions: RouteOptions) {}
+                }
+            )
+        }
+        promise.resolve(true)
+    }
+
+    @ReactMethod
+    fun stopRoute(promise: Promise) {
+        currentActivity?.runOnUiThread {
+            navigationMapRoute?.updateRouteVisibilityTo(false)
+            navigationMapRoute?.updateRouteArrowVisibilityTo(false)
+            navigationMapRoute?.addRoutes(emptyList())
+            val mapViewManager:RCTMGLMapViewManager = RCTMGLPackage.mapViewManager
+            mapViewManager.firstMapView.mapboxMap.clear()
+        }
         promise.resolve(true)
     }
 
     private fun handleRoute(route: DirectionsRoute) {
         this.route = route
         this.route?.let {
-            mapboxNavigation.setRoutes(listOf(it))
+            //mapboxNavigation.setRoutes(listOf(it))
             val mapViewManager:RCTMGLMapViewManager = RCTMGLPackage.mapViewManager
             if (mapViewManager.firstMapView != null) {
                 if (navigationMapRoute == null) {
@@ -84,7 +122,8 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
                 mapViewManager.firstMapView.mapboxMap.moveCamera(CameraUpdateFactory.zoomTo(15.0))
                 val navigationCamera = NavigationCamera(mapViewManager.firstMapView.mapboxMap)
                 navigationCamera.resetCameraPositionWith(NAVIGATION_TRACKING_MODE_GPS)
-                navigationMapRoute!!.addRoute(this.route)
+                navigationMapRoute!!.updateRouteArrowVisibilityTo(true)
+                navigationMapRoute!!.addRoute(it)
             }
         }
     }
@@ -97,7 +136,9 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
 
     private val bannerInstructionsObserver = object: BannerInstructionsObserver {
         override fun onNewBannerInstructions(bannerInstructions: BannerInstructions) {
-            sendEvent(reactContext, "onNewBannerInstructions", gson.toJson(BannerInstructionsResponse(bannerInstructions = bannerInstructions)))
+            if (enableBannerInstructions) {
+                sendEvent(reactContext, "onNewBannerInstructions", gson.toJson(BannerInstructionsResponse(bannerInstructions = bannerInstructions)))
+            }
         }
     }
 
@@ -137,24 +178,6 @@ class MapboxNavigationModule(private val reactContext: ReactApplicationContext) 
                 }
             }
             reactContext.addLifecycleEventListener(listener)
-
-            //TODO this is temporary, remove when we have routes
-            if (route == null) {
-                mapboxNavigation.requestRoutes(
-                    RouteOptions.builder().applyDefaultParams().accessToken(it)
-                        .coordinates(listOf(
-                            Point.fromLngLat(4.375606188596978, 51.14121566158028),
-                            Point.fromLngLat(4.441955998895892, 51.14179615098452))).build(),
-                    object : RoutesRequestCallback {
-                        override fun onRoutesReady(routes: List<DirectionsRoute>) {
-                            handleRoute(routes[0])
-                        }
-
-                        override fun onRoutesRequestFailure(throwable: Throwable, routeOptions: RouteOptions) {}
-                        override fun onRoutesRequestCanceled(routeOptions: RouteOptions) {}
-                    }
-                )
-            }
         }
     }
 
